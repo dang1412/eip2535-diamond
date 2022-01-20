@@ -1,46 +1,71 @@
-# Advanced Sample Hardhat Project
+# EIP2535 Diamond
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+This sample implementation is originally based on Nick Mudgen's [diamon-1-hardhat](https://github.com/mudgen/diamond-1-hardhat) implementation but uses Typescript and goes into further detail about how to deploy, initialize and upgrade.
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+## LibAppStorage
 
-Try running some of the following tasks:
+Adding `contracts/libraries/LibAppStorage.sol`, gathering all variables used by all facets in a struct in one place
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.ts
-TS_NODE_FILES=true npx ts-node scripts/deploy.ts
-npx eslint '**/*.{js,ts}'
-npx eslint '**/*.{js,ts}' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
+```solidity
+pragma solidity ^0.8.0;
+
+struct AppStorage {
+    uint256 x;
+    uint256 y;
+}
 ```
 
-# Etherscan verification
+Used in `Test1Facet`
 
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
+```solidity
+pragma solidity ^0.8.0;
 
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
+import { AppStorage } from "../libraries/LibAppStorage.sol";
 
-```shell
-hardhat run --network ropsten scripts/sample-script.ts
+contract Test1Facet {
+    event TestEvent(address something);
+
+    AppStorage s;
+
+    function test1Func1() external {}
+
+    function changeX() external {
+        s.x += 1;
+    }
+
+    function getX() external view returns (uint256) {
+        return s.x;
+    }
+}
 ```
 
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
+## Scripts
 
-```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
+Providing 2 Typescript functions for deploy and upgrade:
+
+`scripts/deploy/deployDiamond.ts`
+
+```ts
+/**
+ *  @param facetNames: facetNames to be deployed beside 'DiamondCutFacet' 'DiamondLoupeFacet' 'OwnershipFacet', all selectors will be 'add'
+ *  @param init: init function to be invoked in DiamondInit contract
+ *  @return Diamond contract address
+ */
+export async function deployDiamond(facetNames: string[], init = ''): Promise<string>
 ```
 
-# Performance optimizations
+`scripts/deploy/upgradeDiamond.ts`
 
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
+```ts
+/**
+ *  @param diamonAddress: deployed diamond address
+ *  @param facetNames: facetNames to be upgraded, selectors:
+ *    - non-exists: will be 'add'
+ *    - exists: will be 'replace'
+ *  @param init: init function to be invoked in DiamondInit contract
+ *  @return none
+ */
+export async function upgradeDiamond(diamonAddress: string, facetNames: string[], init = ''): Promise<string>
+```
+
+Check usage sample in `test/index.ts`.
