@@ -52,11 +52,15 @@ export async function getCutUpdate(diamondAddr: string, facet: Contract): Promis
   }
 
   const facetAddress = facet.address
-  const cut: DiamondCut[] = [{
-    facetAddress,
-    action: FacetCutAction.Add,
-    functionSelectors: addSelectors,
-  }]
+  const cut: DiamondCut[] = []
+
+  if (addSelectors.length > 0) {
+    cut.push({
+      facetAddress,
+      action: FacetCutAction.Add,
+      functionSelectors: addSelectors,
+    })
+  }
 
   if (replaceSelectors.length > 0) {
     cut.push({
